@@ -69,8 +69,7 @@ func (g *Grid) ToggleWall(column, row int) {
 	case TileWall:
 		g.SetTile(column, row, TileEmpty)
 
-	case TileCastle:
-		// Do not replace the castle with a wall.
+	case TileCastle, TileWater:
 		return
 	}
 }
@@ -80,12 +79,22 @@ func (g *Grid) SetCastle(column, row int) {
 		return
 	}
 
-	if g.TileAt(column, row) == TileWall {
+	if g.TileAt(column, row) != TileEmpty {
 		return
 	}
 
 	g.removeExistingCastle()
 	g.SetTile(column, row, TileCastle)
+}
+
+func (g *Grid) IsBuildable(column, row int) bool {
+	if !g.IsInside(column, row) {
+		return false
+	}
+
+	tile := g.TileAt(column, row)
+
+	return tile == TileEmpty || tile == TileWall
 }
 
 func (g *Grid) FindCastle() (column int, row int, found bool) {

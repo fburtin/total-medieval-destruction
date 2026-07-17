@@ -6,6 +6,7 @@ const (
 	TileEmpty TileType = iota
 	TileWall
 	TileCastle
+	TileWater
 )
 
 func (t TileType) String() string {
@@ -16,6 +17,8 @@ func (t TileType) String() string {
 		return "Wall"
 	case TileCastle:
 		return "Castle"
+	case TileWater:
+		return "Water"
 	default:
 		return "Unknown"
 	}

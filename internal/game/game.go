@@ -4,6 +4,7 @@ import (
 	"image/color"
 	"time"
 
+	"github.com/fburtin/total-medieval-destruction/internal/entities"
 	"github.com/fburtin/total-medieval-destruction/internal/ui"
 	"github.com/fburtin/total-medieval-destruction/internal/world"
 
@@ -34,6 +35,8 @@ type Game struct {
 	phaseTimeLeft time.Duration
 	roundNumber   int
 	lastUpdate    time.Time
+
+	enemyShip *entities.Ship
 }
 
 func New() *Game {
@@ -45,6 +48,7 @@ func New() *Game {
 		lastUpdate:  time.Now(),
 	}
 
+	game.initializeLevel()
 	game.startPhase(PhaseBuild)
 
 	return game
@@ -59,6 +63,10 @@ func (g *Game) Update() error {
 	g.processInput()
 	g.updateRound(deltaTime)
 
+	if g.phase == PhaseBattle && g.enemyShip != nil {
+		g.updateEnemyShip(deltaTime)
+	}
+
 	return nil
 }
 
@@ -71,6 +79,11 @@ func (g *Game) Draw(screen *ebiten.Image) {
 	})
 
 	g.drawGrid(screen)
+
+	if g.enemyShip != nil {
+		g.enemyShip.Draw(screen)
+	}
+
 	g.drawHover(screen)
 	g.drawHUD(screen)
 }
@@ -171,6 +184,14 @@ func (g *Game) tileColor(tile world.TileType) color.Color {
 	case world.TileEmpty:
 		fallthrough
 
+	case world.TileWater:
+		return color.RGBA{
+			R: 45,
+			G: 105,
+			B: 145,
+			A: 255,
+		}
+
 	default:
 		return color.RGBA{
 			R: 92,
@@ -179,4 +200,81 @@ func (g *Game) tileColor(tile world.TileType) color.Color {
 			A: 255,
 		}
 	}
+}
+
+func (g *Game) updateEnemyShip(deltaTime time.Duration) {
+	if g.enemyShip == nil || !g.enemyShip.Alive {
+		return
+	}
+
+	currentRow := int(
+		(g.enemyShip.Y - float64(gridOffsetY)) / float64(tileSize),
+	)
+
+	nextRow := currentRow + 1
+
+	if nextRow >= g.grid.Rows() {
+		nextRow = 0
+	}
+
+	waterColumn, found := g.findWaterColumn(nextRow)
+
+	if !found {
+		return
+	}
+
+	targetX := float64(gridOffsetX + waterColumn*tileSize)
+	targetY := float64(gridOffsetY + nextRow*tileSize)
+
+	moveSpeed := 60.0 * deltaTime.Seconds()
+
+	g.enemyShip.X = moveTowards(
+		g.enemyShip.X,
+		targetX,
+		moveSpeed,
+	)
+
+	g.enemyShip.Y = moveTowards(
+		g.enemyShip.Y,
+		targetY,
+		moveSpeed,
+	)
+}
+
+func (g *Game) findWaterColumn(row int) (int, bool) {
+	waterColumns := make([]int, 0)
+
+	for column := 0; column < g.grid.Columns(); column++ {
+		if g.grid.TileAt(column, row) == world.TileWater {
+			waterColumns = append(waterColumns, column)
+		}
+	}
+
+	if len(waterColumns) == 0 {
+		return 0, false
+	}
+
+	return waterColumns[len(waterColumns)/2], true
+}
+
+func moveTowards(current, target, maximumDelta float64) float64 {
+	if current < target {
+		current += maximumDelta
+
+		if current > target {
+			return target
+		}
+
+		return current
+	}
+
+	if current > target {
+		current -= maximumDelta
+
+		if current < target {
+			return target
+		}
+	}
+
+	return current
 }

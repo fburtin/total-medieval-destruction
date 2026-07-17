@@ -45,7 +45,7 @@ func (g *Game) processInput() {
 		if g.grid.TileAt(
 			g.hoverColumn,
 			g.hoverRow,
-		) != world.TileWall {
+		) == world.TileEmpty {
 			g.grid.SetCastle(
 				g.hoverColumn,
 				g.hoverRow,
