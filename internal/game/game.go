@@ -1,10 +1,10 @@
 package game
 
 import (
-	"fmt"
 	"image/color"
 	"time"
 
+	"github.com/fburtin/total-medieval-destruction/internal/ui"
 	"github.com/fburtin/total-medieval-destruction/internal/world"
 
 	"github.com/hajimehoshi/ebiten/v2"
