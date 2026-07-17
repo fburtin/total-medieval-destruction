@@ -24,6 +24,7 @@ func (g *Game) Draw(screen *ebiten.Image) {
 
 	g.drawHover(screen)
 	g.drawRestartButton(screen)
+	g.drawHUD(screen)
 }
 
 func (g *Game) Layout(
