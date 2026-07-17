@@ -13,15 +13,20 @@ import (
 )
 
 const (
-	screenWidth  = 960
-	screenHeight = 540
+	screenWidth  = 1920
+	screenHeight = 1080
 
 	tileSize = 40
-	gridCols = 20
-	gridRows = 12
+
+	gridCols = 40
+	gridRows = 24
 
 	gridOffsetX = 80
 	gridOffsetY = 30
+
+	restartButtonWidth  = 220
+	restartButtonHeight = 60
+	restartButtonMargin = 25
 )
 
 type Game struct {
@@ -36,7 +41,33 @@ type Game struct {
 	roundNumber   int
 	lastUpdate    time.Time
 
-	enemyShip *entities.Ship
+	enemyShips []*entities.Ship
+
+	restartButtonHovered bool
+}
+
+func (g *Game) Update() error {
+	now := time.Now()
+	deltaTime := now.Sub(g.lastUpdate)
+	g.lastUpdate = now
+
+	g.updateRestartButton()
+
+	g.updateMousePosition()
+
+	if !g.restartButtonHovered {
+		g.processInput()
+	}
+
+	g.updateRound(deltaTime)
+
+	if g.phase == PhaseBattle {
+		for _, ship := range g.enemyShips {
+			g.updateEnemyShip(ship, deltaTime)
+		}
+	}
+
+	return nil
 }
 
 func New() *Game {
@@ -52,47 +83,6 @@ func New() *Game {
 	game.startPhase(PhaseBuild)
 
 	return game
-}
-
-func (g *Game) Update() error {
-	now := time.Now()
-	deltaTime := now.Sub(g.lastUpdate)
-	g.lastUpdate = now
-
-	g.updateMousePosition()
-	g.processInput()
-	g.updateRound(deltaTime)
-
-	if g.phase == PhaseBattle && g.enemyShip != nil {
-		g.updateEnemyShip(deltaTime)
-	}
-
-	return nil
-}
-
-func (g *Game) Draw(screen *ebiten.Image) {
-	screen.Fill(color.RGBA{
-		R: 42,
-		G: 72,
-		B: 46,
-		A: 255,
-	})
-
-	g.drawGrid(screen)
-
-	if g.enemyShip != nil {
-		g.enemyShip.Draw(screen)
-	}
-
-	g.drawHover(screen)
-	g.drawHUD(screen)
-}
-
-func (g *Game) Layout(
-	outsideWidth int,
-	outsideHeight int,
-) (screenWidth int, screenHeight int) {
-	return 960, 540
 }
 
 func (g *Game) drawGrid(screen *ebiten.Image) {
@@ -181,14 +171,19 @@ func (g *Game) tileColor(tile world.TileType) color.Color {
 			A: 255,
 		}
 
-	case world.TileEmpty:
-		fallthrough
-
 	case world.TileWater:
 		return color.RGBA{
 			R: 45,
 			G: 105,
 			B: 145,
+			A: 255,
+		}
+
+	case world.TileEmpty:
+		return color.RGBA{
+			R: 92,
+			G: 125,
+			B: 75,
 			A: 255,
 		}
 
@@ -202,13 +197,17 @@ func (g *Game) tileColor(tile world.TileType) color.Color {
 	}
 }
 
-func (g *Game) updateEnemyShip(deltaTime time.Duration) {
-	if g.enemyShip == nil || !g.enemyShip.Alive {
+func (g *Game) updateEnemyShip(
+	ship *entities.Ship,
+	deltaTime time.Duration,
+) {
+	if ship == nil || !ship.Alive {
 		return
 	}
 
 	currentRow := int(
-		(g.enemyShip.Y - float64(gridOffsetY)) / float64(tileSize),
+		(ship.Y - float64(gridOffsetY)) /
+			float64(tileSize),
 	)
 
 	nextRow := currentRow + 1
@@ -218,24 +217,28 @@ func (g *Game) updateEnemyShip(deltaTime time.Duration) {
 	}
 
 	waterColumn, found := g.findWaterColumn(nextRow)
-
 	if !found {
 		return
 	}
 
-	targetX := float64(gridOffsetX + waterColumn*tileSize)
-	targetY := float64(gridOffsetY + nextRow*tileSize)
+	targetX := float64(
+		gridOffsetX + waterColumn*tileSize,
+	)
+
+	targetY := float64(
+		gridOffsetY + nextRow*tileSize,
+	)
 
 	moveSpeed := 60.0 * deltaTime.Seconds()
 
-	g.enemyShip.X = moveTowards(
-		g.enemyShip.X,
+	ship.X = moveTowards(
+		ship.X,
 		targetX,
 		moveSpeed,
 	)
 
-	g.enemyShip.Y = moveTowards(
-		g.enemyShip.Y,
+	ship.Y = moveTowards(
+		ship.Y,
 		targetY,
 		moveSpeed,
 	)

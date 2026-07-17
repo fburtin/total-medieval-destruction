@@ -1,11 +1,32 @@
 package ui
 
 import (
+	"bytes"
 	"fmt"
+	"image/color"
 
 	"github.com/hajimehoshi/ebiten/v2"
-	"github.com/hajimehoshi/ebiten/v2/ebitenutil"
+	"github.com/hajimehoshi/ebiten/v2/text/v2"
+	"golang.org/x/image/font/gofont/goregular"
 )
+
+const (
+	hudFontSize   = 28
+	hudLineHeight = 38
+)
+
+var hudFontSource *text.GoTextFaceSource
+
+func init() {
+	var err error
+
+	hudFontSource, err = text.NewGoTextFaceSource(
+		bytes.NewReader(goregular.TTF),
+	)
+	if err != nil {
+		panic(fmt.Sprintf("failed to load HUD font: %v", err))
+	}
+}
 
 type HUDData struct {
 	HoverColumn int
@@ -25,53 +46,66 @@ type HUDData struct {
 }
 
 func DrawHUD(screen *ebiten.Image, data HUDData) {
-	mousePosition := "Outside grid"
+	lines := []string{
+		fmt.Sprintf("ROUND: %d", data.RoundNumber),
+		fmt.Sprintf("PHASE: %s", data.Phase),
+		fmt.Sprintf("TIME: %.1f", data.TimeLeft),
+		fmt.Sprintf("CAN BUILD: %t", data.CanBuild),
+		fmt.Sprintf("FORTRESS ENCLOSED: %t", data.FortressEnclosed),
+	}
 
 	if data.HoverValid {
-		mousePosition = fmt.Sprintf(
-			"%d, %d",
-			data.HoverColumn,
-			data.HoverRow,
+		lines = append(
+			lines,
+			fmt.Sprintf(
+				"TILE: column %d, row %d",
+				data.HoverColumn,
+				data.HoverRow,
+			),
 		)
 	}
-
-	castleStatus := "Castle: not placed"
-	fortressStatus := "Fortress: unavailable"
 
 	if data.CastleExists {
-		castleStatus = fmt.Sprintf(
-			"Castle: %d, %d",
-			data.CastleColumn,
-			data.CastleRow,
+		lines = append(
+			lines,
+			fmt.Sprintf(
+				"CASTLE: column %d, row %d",
+				data.CastleColumn,
+				data.CastleRow,
+			),
 		)
-
-		if data.FortressEnclosed {
-			fortressStatus = "Fortress: ENCLOSED"
-		} else {
-			fortressStatus = "Fortress: OPEN"
-		}
 	}
 
-	message := fmt.Sprintf(
-		"TOTAL MEDIEVAL DESTRUCTION\n"+
-			"Phase: %s\n"+
-			"Time: %.1f\n"+
-			"Round: %d\n"+
-			"Building enabled: %t\n"+
-			"Left click: place/remove wall\n"+
-			"Right click: clear tile\n"+
-			"C: place castle\n"+
-			"Mouse tile: %s\n"+
-			"%s\n"+
-			"%s",
-		data.Phase,
-		data.TimeLeft,
-		data.RoundNumber,
-		data.CanBuild,
-		mousePosition,
-		castleStatus,
-		fortressStatus,
-	)
+	face := &text.GoTextFace{
+		Source: hudFontSource,
+		Size:   hudFontSize,
+	}
 
-	ebitenutil.DebugPrint(screen, message)
+	x := 30.0
+	y := 20.0
+
+	for index, line := range lines {
+		options := &text.DrawOptions{}
+
+		options.GeoM.Translate(
+			x,
+			y+float64(index*hudLineHeight),
+		)
+
+		options.ColorScale.ScaleWithColor(
+			color.RGBA{
+				R: 255,
+				G: 255,
+				B: 255,
+				A: 255,
+			},
+		)
+
+		text.Draw(
+			screen,
+			line,
+			face,
+			options,
+		)
+	}
 }
