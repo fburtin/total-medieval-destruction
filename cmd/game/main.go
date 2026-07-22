@@ -18,7 +18,11 @@ func main() {
 	ebiten.SetWindowTitle("Total Medieval Destruction")
 	ebiten.SetWindowResizingMode(ebiten.WindowResizingModeEnabled)
 
-	currentGame := gamepkg.New()
+	currentGame, err := gamepkg.New()
+
+	if err != nil {
+		log.Fatal(err)
+	}
 
 	if err := ebiten.RunGame(currentGame); err != nil {
 		log.Fatal(err)

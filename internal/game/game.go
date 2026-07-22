@@ -1,9 +1,11 @@
 package game
 
 import (
+	"fmt"
 	"image/color"
 	"time"
 
+	"github.com/fburtin/total-medieval-destruction/assets"
 	"github.com/fburtin/total-medieval-destruction/internal/entities"
 	"github.com/fburtin/total-medieval-destruction/internal/ui"
 	"github.com/fburtin/total-medieval-destruction/internal/world"
@@ -31,6 +33,8 @@ const (
 
 type Game struct {
 	grid *world.Grid
+
+	sprites *assets.Sprites
 
 	hoverColumn int
 	hoverRow    int
@@ -70,9 +74,15 @@ func (g *Game) Update() error {
 	return nil
 }
 
-func New() *Game {
+func New() (*Game, error) {
+	sprites, err := assets.Load()
+	if err != nil {
+		return nil, fmt.Errorf("load game assets: %w", err)
+	}
+
 	game := &Game{
 		grid:        world.NewGrid(gridCols, gridRows),
+		sprites:     sprites,
 		hoverColumn: -1,
 		hoverRow:    -1,
 		roundNumber: 1,
@@ -82,7 +92,7 @@ func New() *Game {
 	game.initializeLevel()
 	game.startPhase(PhaseBuild)
 
-	return game
+	return game, nil
 }
 
 func (g *Game) drawGrid(screen *ebiten.Image) {
@@ -105,6 +115,7 @@ func (g *Game) drawGrid(screen *ebiten.Image) {
 			)
 		}
 	}
+
 }
 
 func (g *Game) drawHover(screen *ebiten.Image) {
@@ -280,4 +291,30 @@ func moveTowards(current, target, maximumDelta float64) float64 {
 	}
 
 	return current
+}
+
+func (g *Game) drawGrassTile(
+	screen *ebiten.Image,
+	column int,
+	row int,
+) {
+	variation := (column + row*gridCols) % len(g.sprites.Grass)
+	sprite := g.sprites.Grass[variation]
+
+	op := &ebiten.DrawImageOptions{}
+
+	spriteWidth := sprite.Bounds().Dx()
+	spriteHeight := sprite.Bounds().Dy()
+
+	op.GeoM.Scale(
+		float64(tileSize)/float64(spriteWidth),
+		float64(tileSize)/float64(spriteHeight),
+	)
+
+	x := gridOffsetX + column*tileSize
+	y := gridOffsetY + row*tileSize
+
+	op.GeoM.Translate(float64(x), float64(y))
+
+	screen.DrawImage(sprite, op)
 }
